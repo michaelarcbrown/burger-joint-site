@@ -26,9 +26,9 @@ const PROMPTS = {
   headline: (biz) => `You are a copywriter. Write a punchy 3-6 word headline for a ${biz} homepage hero. Just the headline, no quotes.`,
   tagline: (biz) => `You are a copywriter. Write a one-sentence tagline (max 12 words) for a ${biz}. Just the tagline, no quotes.`,
   about: (biz) => `You are a copywriter. Write a 3-sentence about section for a generic ${biz} website. Describe the experience, atmosphere, and what makes this type of business special. No specific names or locations. Just the text, no quotes.`,
-  menuIntro: (biz) => `You are a copywriter. Write one sentence introducing the menu section of a ${biz} website. Keep it inviting and generic. Just the sentence, no quotes.`,
-  menuItems: (biz) => `You are a copywriter. Generate 8 menu items for a ${biz}. Return ONLY a JSON array of objects with "name" (string), "description" (max 8 words string), and "price" (string like "$12"). No markdown, no backticks, just the JSON array.`,
-  galleryCaption: (biz) => `You are a copywriter. Write one evocative sentence describing the visual experience of a ${biz}. Just the sentence, no quotes.`,
+  menuIntro: (biz) => `You are a copywriter. Write one sentence introducing the services or offerings section of a ${biz} website. Keep it inviting and generic. Just the sentence, no quotes.`,
+  menuItems: (biz) => `You are a copywriter. Generate 8 services or offerings for a ${biz}. Return ONLY a JSON array of objects with "name" (string), "description" (max 8 words string), and "price" (string like "$12" or "Free" or "Varies"). No markdown, no backticks, just the JSON array.`,
+  galleryCaption: (biz) => `You are a copywriter. Write one evocative sentence describing the visual experience of visiting a ${biz}. Just the sentence, no quotes.`,
   testimonials: (biz) => `You are a copywriter. Generate 3 fake customer reviews for a generic ${biz}. Return ONLY a JSON array of objects with "text" (1-2 sentences, max 25 words), "name" (first name only), and "rating" (number 4-5). No markdown, no backticks, just the JSON array.`,
   contactIntro: (biz) => `You are a copywriter. Write one welcoming sentence for the contact/visit section of a ${biz} website. Just the sentence, no quotes.`,
 };
@@ -124,7 +124,7 @@ function HeroImgLeft({ image, copy, palette }) {
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", padding: "80px 56px", background: palette.bg }}>
         <h1 style={heading(palette, "clamp(36px, 5vw, 72px)")}>{copy.headline}</h1>
         <p style={{ ...body(palette), maxWidth: 440 }}>{copy.tagline}</p>
-        <div style={{ marginTop: 40 }}><span style={btn(palette)}>View Menu</span></div>
+        <div style={{ marginTop: 40 }}><span style={btn(palette)}>Learn More</span></div>
       </div>
     </section>
   );
@@ -149,7 +149,7 @@ function HeroImgBg({ image, copy, palette }) {
     <section style={{ ...bg, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 48 }}>
       <h1 style={{ ...heading(palette, "clamp(40px, 6vw, 88px)"), maxWidth: 800 }}>{copy.headline}</h1>
       <p style={{ ...body(palette), maxWidth: 520, marginBottom: 44 }}>{copy.tagline}</p>
-      <span style={btn(palette)}>Reserve a Table</span>
+      <span style={btn(palette)}>Get Started</span>
     </section>
   );
 }
@@ -203,7 +203,7 @@ function MenuGrid({ copy, palette }) {
     <section style={{ background: palette.bg, padding: "120px 48px" }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 64 }}>
-          <p style={label(palette)}>The Menu</p>
+          <p style={label(palette)}>Our Services</p>
           <div style={divider(palette)} />
           <p style={{ ...body(palette), maxWidth: 500, margin: "0 auto" }}>{copy.menuIntro}</p>
         </div>
@@ -229,7 +229,7 @@ function MenuList({ copy, palette }) {
     <section style={{ background: palette.bg, padding: "120px 48px" }}>
       <div style={{ maxWidth: 700, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 64 }}>
-          <p style={label(palette)}>The Menu</p>
+          <p style={label(palette)}>Our Services</p>
           <div style={divider(palette)} />
           <p style={{ ...body(palette), maxWidth: 500, margin: "0 auto" }}>{copy.menuIntro}</p>
         </div>
@@ -254,7 +254,7 @@ function MenuCards({ copy, palette }) {
     <section style={{ background: palette.bg, padding: "120px 48px" }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 64 }}>
-          <p style={label(palette)}>The Menu</p>
+          <p style={label(palette)}>Our Services</p>
           <div style={divider(palette)} />
           <p style={{ ...body(palette), maxWidth: 500, margin: "0 auto" }}>{copy.menuIntro}</p>
         </div>
@@ -479,7 +479,7 @@ function ContactMinimal({ copy, palette }) {
             </div>
           ))}
         </div>
-        <span style={btn(palette)}>Reserve a Table</span>
+        <span style={btn(palette)}>Get Started</span>
       </div>
     </section>
   );
@@ -492,7 +492,7 @@ function Nav({ palette }) {
     <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 40px", background: `${palette.bg}dd`, backdropFilter: "blur(12px)", borderBottom: `1px solid ${palette.muted}15` }}>
       <span style={{ color: palette.accent, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 22, fontWeight: 700 }}>&#9670;</span>
       <div style={{ display: "flex", gap: 32 }}>
-        {["About", "Menu", "Gallery", "Reviews", "Contact"].map((item) => (
+        {["About", "Services", "Gallery", "Reviews", "Contact"].map((item) => (
           <span key={item} style={{ color: palette.text, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontFamily: "sans-serif", cursor: "pointer", opacity: 0.8 }}>{item}</span>
         ))}
       </div>
@@ -551,10 +551,12 @@ const FALLBACK_REVIEWS = [
 ];
 
 export default function SiteGenerator() {
-  const [loading, setLoading] = useState(true);
+  const [phase, setPhase] = useState("input"); // "input" | "loading" | "ready"
+  const [bizType, setBizType] = useState("");
+  const [inputVal, setInputVal] = useState("");
   const [status, setStatus] = useState("");
-  const [palette] = useState(() => pick(COLOR_PALETTES));
-  const [layouts] = useState(() => ({
+  const [palette, setPalette] = useState(() => pick(COLOR_PALETTES));
+  const [layouts, setLayouts] = useState(() => ({
     hero: pick(HERO_LAYOUTS),
     about: pick(ABOUT_LAYOUTS),
     menu: pick(MENU_LAYOUTS),
@@ -565,17 +567,32 @@ export default function SiteGenerator() {
   const [images, setImages] = useState({});
   const [copy, setCopy] = useState({});
 
-  const bizType = "burger joint";
+  function handleGenerate() {
+    if (!inputVal.trim()) return;
+    const biz = inputVal.trim().toLowerCase();
+    setBizType(biz);
+    setPalette(pick(COLOR_PALETTES));
+    setLayouts({
+      hero: pick(HERO_LAYOUTS),
+      about: pick(ABOUT_LAYOUTS),
+      menu: pick(MENU_LAYOUTS),
+      gallery: pick(GALLERY_LAYOUTS),
+      testimonials: pick(TESTIMONIAL_LAYOUTS),
+      contact: pick(CONTACT_LAYOUTS),
+    });
+    setPhase("loading");
+  }
 
   useEffect(() => {
+    if (phase !== "loading" || !bizType) return;
     let cancelled = false;
     async function init() {
       setStatus("Fetching images...");
       const [heroImg, aboutImg, galleryImgs, contactImg] = await Promise.all([
         fetchPexelsImage(bizType, palette),
         fetchPexelsImage(`${bizType} interior`, palette),
-        fetchPexelsImages(`${bizType} food`, 4, palette),
-        fetchPexelsImage(`${bizType} restaurant exterior`, palette),
+        fetchPexelsImages(`${bizType} food products`, 4, palette),
+        fetchPexelsImage(`${bizType} exterior building`, palette),
       ]);
       if (cancelled) return;
       setImages({ hero: heroImg, about: aboutImg, gallery: galleryImgs, contact: contactImg });
@@ -594,23 +611,90 @@ export default function SiteGenerator() {
       if (cancelled) return;
 
       setCopy({
-        headline: headline || "Flavor Worth Finding",
-        tagline: tagline || "Where every bite tells a story.",
-        about: about || "A place dedicated to crafting exceptional burgers using the freshest ingredients. The atmosphere blends modern comfort with classic charm. Every visit is a new experience in bold flavor.",
+        headline: headline || "Excellence Redefined",
+        tagline: tagline || "Where quality meets experience.",
+        about: about || `Dedicated to delivering an exceptional ${bizType} experience. A welcoming atmosphere paired with professional service. Every visit leaves a lasting impression.`,
         menuIntro: menuIntro || "Explore what we have to offer.",
         menuItems: (Array.isArray(menuItems) && menuItems.length > 0) ? menuItems : FALLBACK_MENU,
-        galleryCaption: galleryCaption || "Every plate is a work of art, every moment worth savoring.",
+        galleryCaption: galleryCaption || "See what makes us special.",
         testimonials: (Array.isArray(testimonials) && testimonials.length > 0) ? testimonials : FALLBACK_REVIEWS,
-        contactIntro: contactIntro || "We'd love to welcome you. Stop by or reach out anytime.",
+        contactIntro: contactIntro || "We'd love to hear from you. Reach out anytime.",
       });
-      setLoading(false);
+      setPhase("ready");
     }
     init();
     return () => { cancelled = true; };
-  }, []);
+  }, [phase, bizType]);
 
-  if (loading) return <Loader palette={palette} status={status} />;
+  // ---------- INPUT SCREEN ----------
+  if (phase === "input") {
+    return (
+      <div style={{ minHeight: "100vh", background: palette.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 32, padding: 40 }}>
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet" />
+        <div style={{ textAlign: "center", maxWidth: 600 }}>
+          <span style={{ color: palette.accent, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 48, fontWeight: 700 }}>&#9670;</span>
+          <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "clamp(32px, 5vw, 56px)", color: palette.text, lineHeight: 1.1, marginTop: 16, marginBottom: 12 }}>Site Generator</h1>
+          <p style={{ color: palette.muted, fontFamily: "Georgia, serif", fontSize: 17, lineHeight: 1.6 }}>Type any business type and we'll build you a full website in seconds.</p>
+        </div>
+        <div style={{ display: "flex", gap: 12, width: "100%", maxWidth: 480 }}>
+          <input
+            type="text"
+            value={inputVal}
+            onChange={(e) => setInputVal(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+            placeholder="e.g. burger joint, dentist, flower shop..."
+            style={{
+              flex: 1,
+              padding: "16px 20px",
+              background: palette.surface,
+              border: `1px solid ${palette.muted}33`,
+              color: palette.text,
+              fontFamily: "Georgia, serif",
+              fontSize: 16,
+              outline: "none",
+              borderRadius: 0,
+            }}
+          />
+          <button
+            onClick={handleGenerate}
+            style={{
+              ...btn(palette),
+              padding: "16px 32px",
+              cursor: inputVal.trim() ? "pointer" : "not-allowed",
+              opacity: inputVal.trim() ? 1 : 0.5,
+            }}
+          >
+            Generate
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          {["burger joint", "dentist", "flower shop", "barbershop", "yoga studio", "auto repair"].map((ex) => (
+            <span
+              key={ex}
+              onClick={() => { setInputVal(ex); }}
+              style={{
+                padding: "8px 16px",
+                border: `1px solid ${palette.muted}33`,
+                color: palette.muted,
+                fontFamily: "sans-serif",
+                fontSize: 12,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+            >
+              {ex}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
+  // ---------- LOADING SCREEN ----------
+  if (phase === "loading") return <Loader palette={palette} status={status} />;
+
+  // ---------- GENERATED SITE ----------
   const Hero = HERO_MAP[layouts.hero];
   const About = ABOUT_MAP[layouts.about];
   const Menu = MENU_MAP[layouts.menu];
@@ -622,6 +706,12 @@ export default function SiteGenerator() {
     <div style={{ background: palette.bg, minHeight: "100vh" }}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet" />
       <Nav palette={palette} />
+      <div
+        onClick={() => { setPhase("input"); setInputVal(""); }}
+        style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200, ...btn(palette), padding: "12px 24px", cursor: "pointer", boxShadow: `0 4px 24px ${palette.bg}88` }}
+      >
+        &#8592; New Site
+      </div>
       <Hero image={images.hero} copy={copy} palette={palette} />
       <About image={images.about} copy={copy} palette={palette} />
       <Menu copy={copy} palette={palette} />
