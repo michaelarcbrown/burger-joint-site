@@ -1,5 +1,5 @@
-import '../styles/globals.css';
-
-export default function App({ Component, pageProps }) {
-  return <Component {...pageProps} />;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
