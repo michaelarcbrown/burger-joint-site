@@ -534,20 +534,20 @@ const TESTIMONIAL_MAP = { carousel: TestimonialsCarousel, stacked: TestimonialsS
 const CONTACT_MAP = { centered: ContactCentered, split: ContactSplit, minimal: ContactMinimal };
 
 const FALLBACK_MENU = [
-  { name: "Classic Smash", description: "Double patty, American cheese", price: "$14" },
-  { name: "Truffle Burger", description: "Truffle aioli, arugula, gruyère", price: "$18" },
-  { name: "BBQ Bacon Stack", description: "Smoked bacon, crispy onions", price: "$16" },
-  { name: "Mushroom Swiss", description: "Sautéed mushrooms, Swiss cheese", price: "$15" },
-  { name: "Loaded Fries", description: "Cheese, bacon, green onion", price: "$10" },
-  { name: "Onion Rings", description: "Beer-battered, house dip", price: "$9" },
-  { name: "Milkshake", description: "Hand-spun, seasonal flavors", price: "$8" },
-  { name: "Craft Lemonade", description: "Fresh-squeezed, mint garnish", price: "$6" },
+  { name: "Signature Service", description: "Our most popular offering", price: "Varies" },
+  { name: "Premium Package", description: "Full experience, top to bottom", price: "Varies" },
+  { name: "Quick Session", description: "Fast and efficient service", price: "Varies" },
+  { name: "Deluxe Option", description: "Upgraded with extra care", price: "Varies" },
+  { name: "Starter Package", description: "Perfect for first-timers", price: "Varies" },
+  { name: "Add-On Service", description: "Enhance any visit", price: "Varies" },
+  { name: "Seasonal Special", description: "Limited time offering", price: "Varies" },
+  { name: "Gift Package", description: "Ideal for someone special", price: "Varies" },
 ];
 
 const FALLBACK_REVIEWS = [
-  { text: "Best burger I've had in years. Incredible quality and atmosphere.", name: "Sarah", rating: 5 },
-  { text: "The menu is creative and every dish delivers. Can't wait to return.", name: "Marcus", rating: 5 },
-  { text: "Perfect spot for a casual dinner. Great food, friendly service.", name: "Elena", rating: 4 },
+  { text: "Incredible experience from start to finish. Will definitely be back.", name: "Sarah", rating: 5 },
+  { text: "Professional, welcoming, and exceeded my expectations every time.", name: "Marcus", rating: 5 },
+  { text: "Great atmosphere and outstanding service. Highly recommend.", name: "Elena", rating: 4 },
 ];
 
 export default function SiteGenerator() {
@@ -591,7 +591,7 @@ export default function SiteGenerator() {
       const [heroImg, aboutImg, galleryImgs, contactImg] = await Promise.all([
         fetchPexelsImage(bizType, palette),
         fetchPexelsImage(`${bizType} interior`, palette),
-        fetchPexelsImages(`${bizType} food products`, 4, palette),
+        fetchPexelsImages(bizType, 4, palette),
         fetchPexelsImage(`${bizType} exterior building`, palette),
       ]);
       if (cancelled) return;
