@@ -3,34 +3,63 @@ import { useState, useEffect } from "react";
 const PEXELS_KEY = "blnzWjU5objkH1ZNtuCVJFcHBEvxGEC9ywWC2oH4gnttOZUosvO1akW7";
 
 const COLOR_PALETTES = [
-  { name: "ember", bg: "#1a1210", surface: "#2a1f1a", accent: "#e8552e", text: "#f5efe8", muted: "#a89585", accent2: "#d4844e" },
+  { name: "ember",    bg: "#1a1210", surface: "#2a1f1a", accent: "#e8552e", text: "#f5efe8", muted: "#a89585", accent2: "#d4844e" },
   { name: "midnight", bg: "#0c1017", surface: "#161c28", accent: "#4ea8de", text: "#e8edf5", muted: "#7b8ba3", accent2: "#6e78de" },
-  { name: "forest", bg: "#101a12", surface: "#1a2c1e", accent: "#6dbf73", text: "#eaf5eb", muted: "#88a88c", accent2: "#a8bf6d" },
-  { name: "plum", bg: "#18101a", surface: "#281a2c", accent: "#c17bd4", text: "#f3eaf5", muted: "#a088a8", accent2: "#d47ba0" },
-  { name: "sand", bg: "#1a1815", surface: "#2c2820", accent: "#d4a84e", text: "#f5f0e8", muted: "#a8a085", accent2: "#d4784e" },
-  { name: "slate", bg: "#121416", surface: "#1e2226", accent: "#e85050", text: "#f0f2f5", muted: "#8a9099", accent2: "#e89050" },
+  { name: "forest",   bg: "#101a12", surface: "#1a2c1e", accent: "#6dbf73", text: "#eaf5eb", muted: "#88a88c", accent2: "#a8bf6d" },
+  { name: "plum",     bg: "#18101a", surface: "#281a2c", accent: "#c17bd4", text: "#f3eaf5", muted: "#a088a8", accent2: "#d47ba0" },
+  { name: "sand",     bg: "#1a1815", surface: "#2c2820", accent: "#d4a84e", text: "#f5f0e8", muted: "#a8a085", accent2: "#d4784e" },
+  { name: "slate",    bg: "#121416", surface: "#1e2226", accent: "#e85050", text: "#f0f2f5", muted: "#8a9099", accent2: "#e89050" },
 ];
 
-const HERO_LAYOUTS = ["img-left", "img-right", "img-bg"];
-const ABOUT_LAYOUTS = ["centered", "split-left", "split-right"];
-const MENU_LAYOUTS = ["grid", "list", "cards"];
-const GALLERY_LAYOUTS = ["masonry", "filmstrip", "featured"];
+const HERO_LAYOUTS        = ["img-left", "img-right", "img-bg"];
+const ABOUT_LAYOUTS       = ["centered", "split-left", "split-right"];
+const MENU_LAYOUTS        = ["grid", "list", "cards"];
+const GALLERY_LAYOUTS     = ["masonry", "filmstrip", "featured"];
 const TESTIMONIAL_LAYOUTS = ["carousel", "stacked", "highlight"];
-const CONTACT_LAYOUTS = ["centered", "split", "minimal"];
+const CONTACT_LAYOUTS     = ["centered", "split", "minimal"];
 
-function pick(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ─── STEP 0.1: Q-PID URL PARAMETER READER ────────────────────────────────────
+// Reads prospect-specific params injected by the Q-PID pipeline.
+// Supported params:
+//   ?biz=Mikes+Barber+Shop   → display name shown in copy ("Mike's Barber Shop")
+//   &type=barbershop          → keyword used for Pexels images + AI copy tone
+//   &city=Indianapolis        → injected into headline/contact copy
+//   &color=midnight           → optional: force a specific palette name
+//   &id=LEAD_001              → optional: lead tracking ID (logged, not displayed)
+//
+// If NO params are present → normal input screen loads.
+// If params ARE present    → skips input screen, auto-generates immediately.
+function readQPID() {
+  if (typeof window === "undefined") return null;
+  const p = new URLSearchParams(window.location.search);
+  const biz   = p.get("biz")   || null;
+  const type  = p.get("type")  || null;
+  const city  = p.get("city")  || "";
+  const color = p.get("color") || null;
+  const id    = p.get("id")    || null;
+  if (!biz && !type) return null; // no Q-PID params → show input screen
+  return {
+    bizName: biz  || type,   // display name (e.g. "Mike's Barber Shop")
+    bizType: type || biz,    // keyword for images + prompts (e.g. "barbershop")
+    city,
+    color,
+    id,
+  };
 }
+// ─────────────────────────────────────────────────────────────────────────────
 
 const PROMPTS = {
-  headline: (biz) => `You are a copywriter. Write a punchy 3-6 word headline for a ${biz} homepage hero. Just the headline, no quotes.`,
-  tagline: (biz) => `You are a copywriter. Write a one-sentence tagline (max 12 words) for a ${biz}. Just the tagline, no quotes.`,
-  about: (biz) => `You are a copywriter. Write a 3-sentence about section for a generic ${biz} website. Describe the experience, atmosphere, and what makes this type of business special. No specific names or locations. Just the text, no quotes.`,
-  menuIntro: (biz) => `You are a copywriter. Write one sentence introducing the services or offerings section of a ${biz} website. Keep it inviting and generic. Just the sentence, no quotes.`,
-  menuItems: (biz) => `You are a copywriter. Generate 8 services or offerings for a ${biz}. Return ONLY a JSON array of objects with "name" (string), "description" (max 8 words string), and "price" (string like "$12" or "Free" or "Varies"). No markdown, no backticks, just the JSON array.`,
-  galleryCaption: (biz) => `You are a copywriter. Write one evocative sentence describing the visual experience of visiting a ${biz}. Just the sentence, no quotes.`,
-  testimonials: (biz) => `You are a copywriter. Generate 3 fake customer reviews for a generic ${biz}. Return ONLY a JSON array of objects with "text" (1-2 sentences, max 25 words), "name" (first name only), and "rating" (number 4-5). No markdown, no backticks, just the JSON array.`,
-  contactIntro: (biz) => `You are a copywriter. Write one welcoming sentence for the contact/visit section of a ${biz} website. Just the sentence, no quotes.`,
+  // Updated to accept bizName + city for personalization when Q-PID is active
+  headline:       (type, name, city) => `You are a copywriter. Write a punchy 3-6 word headline for ${name ? `"${name}"` : `a ${type}`}${city ? ` in ${city}` : ""}. Just the headline, no quotes.`,
+  tagline:        (type, name, city) => `You are a copywriter. Write a one-sentence tagline (max 12 words) for ${name ? `"${name}"` : `a ${type}`}${city ? ` in ${city}` : ""}. Just the tagline, no quotes.`,
+  about:          (type, name, city) => `You are a copywriter. Write a 3-sentence about section for ${name ? `"${name}"` : `a ${type}`}${city ? ` in ${city}` : ""}. Describe the experience, atmosphere, and what makes this business special. No invented contact info. Just the text, no quotes.`,
+  menuIntro:      (type)             => `You are a copywriter. Write one sentence introducing the services or offerings section of a ${type} website. Keep it inviting and generic. Just the sentence, no quotes.`,
+  menuItems:      (type)             => `You are a copywriter. Generate 8 services or offerings for a ${type}. Return ONLY a JSON array of objects with "name" (string), "description" (max 8 words string), and "price" (string like "$12" or "Free" or "Varies"). No markdown, no backticks, just the JSON array.`,
+  galleryCaption: (type, name)       => `You are a copywriter. Write one evocative sentence describing the visual experience of visiting ${name ? `"${name}"` : `a ${type}`}. Just the sentence, no quotes.`,
+  testimonials:   (type, name)       => `You are a copywriter. Generate 3 fake customer reviews for ${name ? `"${name}"` : `a generic ${type}`}. Return ONLY a JSON array of objects with "text" (1-2 sentences, max 25 words), "name" (first name only), and "rating" (number 4-5). No markdown, no backticks, just the JSON array.`,
+  contactIntro:   (type, name, city) => `You are a copywriter. Write one welcoming sentence for the contact/visit section of ${name ? `"${name}"` : `a ${type}`}${city ? ` in ${city}` : ""}. Just the sentence, no quotes.`,
 };
 
 function gradientFallback(palette) {
@@ -107,16 +136,15 @@ function imgBg(image) {
   return { backgroundImage: `url(${image?.url})`, backgroundSize: "cover", backgroundPosition: "center" };
 }
 
-const label = (palette) => ({ color: palette.accent, fontFamily: "sans-serif", fontSize: 11, letterSpacing: 4, textTransform: "uppercase", marginBottom: 24 });
-const heading = (palette, size = "clamp(32px, 4vw, 56px)") => ({ fontFamily: "'Playfair Display', Georgia, serif", fontSize: size, color: palette.text, lineHeight: 1.1, marginBottom: 20 });
-const body = (palette) => ({ color: palette.muted, fontSize: 17, lineHeight: 1.7, fontFamily: "'Playfair Display', Georgia, serif" });
-const btn = (palette, variant = "filled") => variant === "filled"
+const label    = (palette) => ({ color: palette.accent, fontFamily: "sans-serif", fontSize: 11, letterSpacing: 4, textTransform: "uppercase", marginBottom: 24 });
+const heading  = (palette, size = "clamp(32px, 4vw, 56px)") => ({ fontFamily: "'Playfair Display', Georgia, serif", fontSize: size, color: palette.text, lineHeight: 1.1, marginBottom: 20 });
+const body     = (palette) => ({ color: palette.muted, fontSize: 17, lineHeight: 1.7, fontFamily: "'Playfair Display', Georgia, serif" });
+const btn      = (palette, variant = "filled") => variant === "filled"
   ? { display: "inline-block", padding: "14px 40px", background: palette.accent, color: palette.bg, fontFamily: "sans-serif", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", fontWeight: 700, cursor: "pointer", border: "none" }
   : { display: "inline-block", padding: "14px 40px", border: `2px solid ${palette.accent}`, color: palette.accent, fontFamily: "sans-serif", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", fontWeight: 700, cursor: "pointer", background: "transparent" };
-const divider = (palette) => ({ width: 60, height: 2, background: palette.accent, margin: "0 auto 32px" });
+const divider  = (palette) => ({ width: 60, height: 2, background: palette.accent, margin: "0 auto 32px" });
 
 /* ===== SECTION 1: HERO ===== */
-
 function HeroImgLeft({ image, copy, palette }) {
   return (
     <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: "100vh" }}>
@@ -144,7 +172,9 @@ function HeroImgRight({ image, copy, palette }) {
 }
 
 function HeroImgBg({ image, copy, palette }) {
-  const bg = image?.isGradient ? { background: image.url } : { backgroundImage: `linear-gradient(to bottom, ${palette.bg}aa, ${palette.bg}dd), url(${image?.url})`, backgroundSize: "cover", backgroundPosition: "center" };
+  const bg = image?.isGradient
+    ? { background: image.url }
+    : { backgroundImage: `linear-gradient(to bottom, ${palette.bg}aa, ${palette.bg}dd), url(${image?.url})`, backgroundSize: "cover", backgroundPosition: "center" };
   return (
     <section style={{ ...bg, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 48 }}>
       <h1 style={{ ...heading(palette, "clamp(40px, 6vw, 88px)"), maxWidth: 800 }}>{copy.headline}</h1>
@@ -155,7 +185,6 @@ function HeroImgBg({ image, copy, palette }) {
 }
 
 /* ===== SECTION 2: ABOUT ===== */
-
 function AboutCentered({ image, copy, palette }) {
   return (
     <section style={{ background: palette.surface, padding: "120px 48px", position: "relative", overflow: "hidden" }}>
@@ -196,7 +225,6 @@ function AboutSplitRight({ image, copy, palette }) {
 }
 
 /* ===== SECTION 3: MENU ===== */
-
 function MenuGrid({ copy, palette }) {
   const items = copy.menuItems || [];
   return (
@@ -280,7 +308,6 @@ function MenuCards({ copy, palette }) {
 }
 
 /* ===== SECTION 4: GALLERY ===== */
-
 function GalleryMasonry({ images, copy, palette }) {
   return (
     <section style={{ background: palette.surface, padding: "120px 48px" }}>
@@ -339,7 +366,6 @@ function GalleryFeatured({ images, copy, palette }) {
 }
 
 /* ===== SECTION 5: TESTIMONIALS ===== */
-
 function Stars({ count, palette }) {
   return <span style={{ color: palette.accent, fontSize: 16, letterSpacing: 2 }}>{"★".repeat(count)}{"☆".repeat(5 - count)}</span>;
 }
@@ -419,7 +445,6 @@ function TestimonialsHighlight({ copy, palette }) {
 }
 
 /* ===== SECTION 6: CONTACT ===== */
-
 function ContactCentered({ image, copy, palette }) {
   return (
     <section style={{ position: "relative", padding: "120px 48px", overflow: "hidden", background: palette.bg }}>
@@ -486,11 +511,13 @@ function ContactMinimal({ copy, palette }) {
 }
 
 /* ===== NAV + FOOTER ===== */
-
-function Nav({ palette }) {
+function Nav({ palette, bizName }) {
   return (
     <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 40px", background: `${palette.bg}dd`, backdropFilter: "blur(12px)", borderBottom: `1px solid ${palette.muted}15` }}>
-      <span style={{ color: palette.accent, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 22, fontWeight: 700 }}>&#9670;</span>
+      {/* Show business name in nav when Q-PID is active, generic diamond otherwise */}
+      <span style={{ color: palette.accent, fontFamily: "'Playfair Display', Georgia, serif", fontSize: bizName ? 16 : 22, fontWeight: 700 }}>
+        {bizName || "◆"}
+      </span>
       <div style={{ display: "flex", gap: 32 }}>
         {["About", "Services", "Gallery", "Reviews", "Contact"].map((item) => (
           <span key={item} style={{ color: palette.text, fontSize: 11, letterSpacing: 2, textTransform: "uppercase", fontFamily: "sans-serif", cursor: "pointer", opacity: 0.8 }}>{item}</span>
@@ -513,8 +540,7 @@ function Footer({ palette }) {
   );
 }
 
-/* ===== LOADER + MAIN ===== */
-
+/* ===== LOADER ===== */
 function Loader({ palette, status }) {
   return (
     <div style={{ minHeight: "100vh", background: palette.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 20 }}>
@@ -526,59 +552,78 @@ function Loader({ palette, status }) {
   );
 }
 
-const HERO_MAP = { "img-left": HeroImgLeft, "img-right": HeroImgRight, "img-bg": HeroImgBg };
-const ABOUT_MAP = { centered: AboutCentered, "split-left": AboutSplitLeft, "split-right": AboutSplitRight };
-const MENU_MAP = { grid: MenuGrid, list: MenuList, cards: MenuCards };
-const GALLERY_MAP = { masonry: GalleryMasonry, filmstrip: GalleryFilmstrip, featured: GalleryFeatured };
+const HERO_MAP        = { "img-left": HeroImgLeft, "img-right": HeroImgRight, "img-bg": HeroImgBg };
+const ABOUT_MAP       = { centered: AboutCentered, "split-left": AboutSplitLeft, "split-right": AboutSplitRight };
+const MENU_MAP        = { grid: MenuGrid, list: MenuList, cards: MenuCards };
+const GALLERY_MAP     = { masonry: GalleryMasonry, filmstrip: GalleryFilmstrip, featured: GalleryFeatured };
 const TESTIMONIAL_MAP = { carousel: TestimonialsCarousel, stacked: TestimonialsStacked, highlight: TestimonialsHighlight };
-const CONTACT_MAP = { centered: ContactCentered, split: ContactSplit, minimal: ContactMinimal };
+const CONTACT_MAP     = { centered: ContactCentered, split: ContactSplit, minimal: ContactMinimal };
 
 const FALLBACK_MENU = [
-  { name: "Signature Service", description: "Our most popular offering", price: "Varies" },
-  { name: "Premium Package", description: "Full experience, top to bottom", price: "Varies" },
-  { name: "Quick Session", description: "Fast and efficient service", price: "Varies" },
-  { name: "Deluxe Option", description: "Upgraded with extra care", price: "Varies" },
-  { name: "Starter Package", description: "Perfect for first-timers", price: "Varies" },
-  { name: "Add-On Service", description: "Enhance any visit", price: "Varies" },
-  { name: "Seasonal Special", description: "Limited time offering", price: "Varies" },
-  { name: "Gift Package", description: "Ideal for someone special", price: "Varies" },
+  { name: "Signature Service",  description: "Our most popular offering",         price: "Varies" },
+  { name: "Premium Package",    description: "Full experience, top to bottom",     price: "Varies" },
+  { name: "Quick Session",      description: "Fast and efficient service",         price: "Varies" },
+  { name: "Deluxe Option",      description: "Upgraded with extra care",           price: "Varies" },
+  { name: "Starter Package",    description: "Perfect for first-timers",           price: "Varies" },
+  { name: "Add-On Service",     description: "Enhance any visit",                 price: "Varies" },
+  { name: "Seasonal Special",   description: "Limited time offering",              price: "Varies" },
+  { name: "Gift Package",       description: "Ideal for someone special",          price: "Varies" },
 ];
 
 const FALLBACK_REVIEWS = [
-  { text: "Incredible experience from start to finish. Will definitely be back.", name: "Sarah", rating: 5 },
-  { text: "Professional, welcoming, and exceeded my expectations every time.", name: "Marcus", rating: 5 },
-  { text: "Great atmosphere and outstanding service. Highly recommend.", name: "Elena", rating: 4 },
+  { text: "Incredible experience from start to finish. Will definitely be back.", name: "Sarah",  rating: 5 },
+  { text: "Professional, welcoming, and exceeded my expectations every time.",   name: "Marcus", rating: 5 },
+  { text: "Great atmosphere and outstanding service. Highly recommend.",          name: "Elena",  rating: 4 },
 ];
 
+/* ===== MAIN COMPONENT ===== */
 export default function SiteGenerator() {
-  const [phase, setPhase] = useState("input"); // "input" | "loading" | "ready"
-  const [bizType, setBizType] = useState("");
+  // ── Q-PID: read URL params on mount ──────────────────────────────────────
+  // If params exist, we skip the input screen entirely and go straight to loading.
+  const [qpid]     = useState(() => readQPID());
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const [phase,    setPhase]    = useState(() => qpid ? "loading" : "input");
+  const [bizType,  setBizType]  = useState(() => qpid ? qpid.bizType  : "");
+  const [bizName,  setBizName]  = useState(() => qpid ? qpid.bizName  : "");
+  const [city,     setCity]     = useState(() => qpid ? qpid.city     : "");
   const [inputVal, setInputVal] = useState("");
-  const [status, setStatus] = useState("");
-  const [palette, setPalette] = useState(() => pick(COLOR_PALETTES));
+  const [status,   setStatus]   = useState("");
+
+  const [palette, setPalette] = useState(() => {
+    if (qpid?.color) {
+      const forced = COLOR_PALETTES.find(p => p.name === qpid.color);
+      if (forced) return forced;
+    }
+    return pick(COLOR_PALETTES);
+  });
+
   const [layouts, setLayouts] = useState(() => ({
-    hero: pick(HERO_LAYOUTS),
-    about: pick(ABOUT_LAYOUTS),
-    menu: pick(MENU_LAYOUTS),
-    gallery: pick(GALLERY_LAYOUTS),
+    hero:         pick(HERO_LAYOUTS),
+    about:        pick(ABOUT_LAYOUTS),
+    menu:         pick(MENU_LAYOUTS),
+    gallery:      pick(GALLERY_LAYOUTS),
     testimonials: pick(TESTIMONIAL_LAYOUTS),
-    contact: pick(CONTACT_LAYOUTS),
+    contact:      pick(CONTACT_LAYOUTS),
   }));
+
   const [images, setImages] = useState({});
-  const [copy, setCopy] = useState({});
+  const [copy,   setCopy]   = useState({});
 
   function handleGenerate() {
     if (!inputVal.trim()) return;
     const biz = inputVal.trim().toLowerCase();
     setBizType(biz);
+    setBizName("");   // manual input has no display name
+    setCity("");
     setPalette(pick(COLOR_PALETTES));
     setLayouts({
-      hero: pick(HERO_LAYOUTS),
-      about: pick(ABOUT_LAYOUTS),
-      menu: pick(MENU_LAYOUTS),
-      gallery: pick(GALLERY_LAYOUTS),
+      hero:         pick(HERO_LAYOUTS),
+      about:        pick(ABOUT_LAYOUTS),
+      menu:         pick(MENU_LAYOUTS),
+      gallery:      pick(GALLERY_LAYOUTS),
       testimonials: pick(TESTIMONIAL_LAYOUTS),
-      contact: pick(CONTACT_LAYOUTS),
+      contact:      pick(CONTACT_LAYOUTS),
     });
     setPhase("loading");
   }
@@ -599,26 +644,26 @@ export default function SiteGenerator() {
 
       setStatus("Generating copy...");
       const [headline, tagline, about, menuIntro, menuItems, galleryCaption, testimonials, contactIntro] = await Promise.all([
-        generateCopy(PROMPTS.headline(bizType)),
-        generateCopy(PROMPTS.tagline(bizType)),
-        generateCopy(PROMPTS.about(bizType)),
+        generateCopy(PROMPTS.headline(bizType, bizName, city)),
+        generateCopy(PROMPTS.tagline(bizType, bizName, city)),
+        generateCopy(PROMPTS.about(bizType, bizName, city)),
         generateCopy(PROMPTS.menuIntro(bizType)),
         generateJSON(PROMPTS.menuItems(bizType)),
-        generateCopy(PROMPTS.galleryCaption(bizType)),
-        generateJSON(PROMPTS.testimonials(bizType)),
-        generateCopy(PROMPTS.contactIntro(bizType)),
+        generateCopy(PROMPTS.galleryCaption(bizType, bizName)),
+        generateJSON(PROMPTS.testimonials(bizType, bizName)),
+        generateCopy(PROMPTS.contactIntro(bizType, bizName, city)),
       ]);
       if (cancelled) return;
 
       setCopy({
-        headline: headline || "Excellence Redefined",
-        tagline: tagline || "Where quality meets experience.",
-        about: about || `Dedicated to delivering an exceptional ${bizType} experience. A welcoming atmosphere paired with professional service. Every visit leaves a lasting impression.`,
-        menuIntro: menuIntro || "Explore what we have to offer.",
-        menuItems: (Array.isArray(menuItems) && menuItems.length > 0) ? menuItems : FALLBACK_MENU,
+        headline:       headline       || "Excellence Redefined",
+        tagline:        tagline        || "Where quality meets experience.",
+        about:          about          || `Dedicated to delivering an exceptional ${bizType} experience. A welcoming atmosphere paired with professional service. Every visit leaves a lasting impression.`,
+        menuIntro:      menuIntro      || "Explore what we have to offer.",
+        menuItems:      (Array.isArray(menuItems) && menuItems.length > 0) ? menuItems : FALLBACK_MENU,
         galleryCaption: galleryCaption || "See what makes us special.",
-        testimonials: (Array.isArray(testimonials) && testimonials.length > 0) ? testimonials : FALLBACK_REVIEWS,
-        contactIntro: contactIntro || "We'd love to hear from you. Reach out anytime.",
+        testimonials:   (Array.isArray(testimonials) && testimonials.length > 0) ? testimonials : FALLBACK_REVIEWS,
+        contactIntro:   contactIntro   || "We'd love to hear from you. Reach out anytime.",
       });
       setPhase("ready");
     }
@@ -626,13 +671,13 @@ export default function SiteGenerator() {
     return () => { cancelled = true; };
   }, [phase, bizType]);
 
-  // ---------- INPUT SCREEN ----------
+  /* ── INPUT SCREEN (only shown when no Q-PID params) ── */
   if (phase === "input") {
     return (
       <div style={{ minHeight: "100vh", background: palette.bg, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 32, padding: 40 }}>
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet" />
         <div style={{ textAlign: "center", maxWidth: 600 }}>
-          <span style={{ color: palette.accent, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 48, fontWeight: 700 }}>&#9670;</span>
+          <span style={{ color: palette.accent, fontFamily: "'Playfair Display', Georgia, serif", fontSize: 48, fontWeight: 700 }}>◆</span>
           <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "clamp(32px, 5vw, 56px)", color: palette.text, lineHeight: 1.1, marginTop: 16, marginBottom: 12 }}>Site Generator</h1>
           <p style={{ color: palette.muted, fontFamily: "Georgia, serif", fontSize: 17, lineHeight: 1.6 }}>Type any business type and we'll build you a full website in seconds.</p>
         </div>
@@ -643,81 +688,54 @@ export default function SiteGenerator() {
             onChange={(e) => setInputVal(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
             placeholder="e.g. burger joint, dentist, flower shop..."
-            style={{
-              flex: 1,
-              padding: "16px 20px",
-              background: palette.surface,
-              border: `1px solid ${palette.muted}33`,
-              color: palette.text,
-              fontFamily: "Georgia, serif",
-              fontSize: 16,
-              outline: "none",
-              borderRadius: 0,
-            }}
+            style={{ flex: 1, padding: "16px 20px", background: palette.surface, border: `1px solid ${palette.muted}33`, color: palette.text, fontFamily: "Georgia, serif", fontSize: 16, outline: "none", borderRadius: 0 }}
           />
           <button
             onClick={handleGenerate}
-            style={{
-              ...btn(palette),
-              padding: "16px 32px",
-              cursor: inputVal.trim() ? "pointer" : "not-allowed",
-              opacity: inputVal.trim() ? 1 : 0.5,
-            }}
+            style={{ ...btn(palette), padding: "16px 32px", cursor: inputVal.trim() ? "pointer" : "not-allowed", opacity: inputVal.trim() ? 1 : 0.5 }}
           >
             Generate
           </button>
         </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
           {["burger joint", "dentist", "flower shop", "barbershop", "yoga studio", "auto repair"].map((ex) => (
-            <span
-              key={ex}
-              onClick={() => { setInputVal(ex); }}
-              style={{
-                padding: "8px 16px",
-                border: `1px solid ${palette.muted}33`,
-                color: palette.muted,
-                fontFamily: "sans-serif",
-                fontSize: 12,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-            >
-              {ex}
-            </span>
+            <span key={ex} onClick={() => setInputVal(ex)} style={{ padding: "8px 16px", border: `1px solid ${palette.muted}33`, color: palette.muted, fontFamily: "sans-serif", fontSize: 12, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer" }}>{ex}</span>
           ))}
         </div>
       </div>
     );
   }
 
-  // ---------- LOADING SCREEN ----------
+  /* ── LOADING ── */
   if (phase === "loading") return <Loader palette={palette} status={status} />;
 
-  // ---------- GENERATED SITE ----------
-  const Hero = HERO_MAP[layouts.hero];
-  const About = ABOUT_MAP[layouts.about];
-  const Menu = MENU_MAP[layouts.menu];
-  const Gallery = GALLERY_MAP[layouts.gallery];
+  /* ── GENERATED SITE ── */
+  const Hero         = HERO_MAP[layouts.hero];
+  const About        = ABOUT_MAP[layouts.about];
+  const Menu         = MENU_MAP[layouts.menu];
+  const Gallery      = GALLERY_MAP[layouts.gallery];
   const Testimonials = TESTIMONIAL_MAP[layouts.testimonials];
-  const Contact = CONTACT_MAP[layouts.contact];
+  const Contact      = CONTACT_MAP[layouts.contact];
 
   return (
     <div style={{ background: palette.bg, minHeight: "100vh" }}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet" />
-      <Nav palette={palette} />
-      <div
-        onClick={() => { setPhase("input"); setInputVal(""); }}
-        style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200, ...btn(palette), padding: "12px 24px", cursor: "pointer", boxShadow: `0 4px 24px ${palette.bg}88` }}
-      >
-        &#8592; New Site
-      </div>
-      <Hero image={images.hero} copy={copy} palette={palette} />
-      <About image={images.about} copy={copy} palette={palette} />
-      <Menu copy={copy} palette={palette} />
-      <Gallery images={images.gallery} copy={copy} palette={palette} />
-      <Testimonials copy={copy} palette={palette} />
-      <Contact image={images.contact} copy={copy} palette={palette} />
+      <Nav palette={palette} bizName={bizName} />
+      {/* Only show "New Site" button when NOT in Q-PID mode */}
+      {!qpid && (
+        <div
+          onClick={() => { setPhase("input"); setInputVal(""); }}
+          style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200, ...btn(palette), padding: "12px 24px", cursor: "pointer", boxShadow: `0 4px 24px ${palette.bg}88` }}
+        >
+          ← New Site
+        </div>
+      )}
+      <Hero         image={images.hero}    copy={copy} palette={palette} />
+      <About        image={images.about}   copy={copy} palette={palette} />
+      <Menu         copy={copy}            palette={palette} />
+      <Gallery      images={images.gallery} copy={copy} palette={palette} />
+      <Testimonials copy={copy}            palette={palette} />
+      <Contact      image={images.contact} copy={copy} palette={palette} />
       <Footer palette={palette} />
     </div>
   );
